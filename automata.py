@@ -1,7 +1,7 @@
 import  win32com.client
 import speech_recognition as sr 
 import es_core_news_sm
-import Funcion_Fechas
+import Funct_Fechas as ff
 
 global auto_texto
 global dict_elementos

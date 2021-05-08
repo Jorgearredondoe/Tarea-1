@@ -9,7 +9,7 @@
 import es_core_news_sm
 import re
 import automata as glo
-import Funcion_Fechas
+import Funct_Fechas as ff
 
 #Inicialización de tts
 def inicializarTTS():
@@ -55,6 +55,9 @@ def busqueda_origen_destino(texto):
 texto = glo.LeerVoz('Wena como estay')
 origen_destino = busqueda_origen_destino(texto)
 glo.creacion_dict(origen_destino) #esta debe estar actualizada con las otras variables
+fechas = ff.funcion_fechas(texto[0])
+print(fechas)
+
 print(glo.dict_elementos)
 glo.creacion_texto_automata()
 print(glo.auto_texto)
