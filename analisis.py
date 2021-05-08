@@ -7,147 +7,75 @@
 #dateparser.parse
 
 import es_core_news_sm
-import  win32com.client
-import speech_recognition as sr 
 import re
+import automata as glo
+import Funcion_Fechas
 
-#Variable global de texto de input para automata
-global auto_texto =''
-#Creación diccionario para mapear los datos obtenidos
-global dict_elementos ={'Origen' : '-1',
-                  'Destino' : '-1',
-                  'fecha_ida' : '-1',
-                  'fecha_regreso' : '-1',
-                  'ida_regreso' : '-1'}
-
+#Inicialización de tts
 def inicializarTTS():
-  rate = -2  # de -10 (lento) a 10 (rapido)
-  speak = win32com.client.Dispatch('Sapi.SpVoice')
-  speak.Voice = speak.GetVoices().Item(1) #Cambiar a 1 funciona, default = 2
-  speak.Rate = rate
-  return(speak.Speak)
-
-def Etiquetar(texto):
-    nlp = es_core_news_sm.load()
-    doc = nlp(texto)
-    Etiquetado = [(t.text,t.pos_) for t in doc]
-    return(Etiquetado)
-
-def ASR():
-    #speak = inicializarTTS()
-    texto_reconocido="" #Creación de string
-    r = sr.Recognizer()                                                                                   
-    with sr.Microphone() as source:    
-       audio = r.listen(source)  
-    try:
-       texto_reconocido = r.recognize_google(audio, language='es-es') #Reconocimiento de voz, lenguaje español
-    #En caso de que no se reconozca el audio o no se obtenga requerimiento se retorna 0
-    except sr.UnknownValueError:
-       speak("Por favor, intente nuevamente")
-       #print("Por favor, intente nuevamente")
-       return 0
-    except sr.RequestError as e:
-       speak("No obtuve ningun requerimiento {0}".format(e))
-       #print("No obtuve ningun requerimiento {0}".format(e))
-       return 0
-    return(texto_reconocido)
-
-def Lematizar(oracion):
-   nlp       = es_core_news_sm.load()
-   doc = nlp(oracion)
-   lemas = [token.lemma_ for token in doc]
-   return(" ".join(lemas))
-
-def Etiquetar(texto):
-    nlp = es_core_news_sm.load()
-    doc = nlp(texto)
-    Etiquetado = [(t.text,t.pos_) for t in doc]
-    return(Etiquetado)
-
-def LeerVoz(question):
-        #speak = inicializarTTS()
-        # Sintetizar voz de la pregunta
-        #speak(question)
-        #  Reconocer respuesta hablada
-        print('habla ahora')
-        texto = ASR()
-        texto = Lematizar(texto)
-        print('dijiste',texto)
-        etiqueta = Etiquetar(texto)
-        texto_etiqueta = ' '.join([w+"<"+t+">" for w,t in etiqueta])
-        print(texto_etiqueta)
-        return texto,texto_etiqueta,etiqueta
+   rate = -2  # de -10 (lento) a 10 (rapido)
+   speak = win32com.client.Dispatch('Sapi.SpVoice')
+   speak.Voice = speak.GetVoices().Item(1) #Cambiar a 1 logra funcionar bien, default = 2
+   speak.Rate = rate
+   return(speak.Speak)
 
 #========================================================================================================
 #Texto reconocido!
 #========================================================================================================
 
-def ExtraerEntidades(texto):
-    nlp = es_core_news_sm.load()
-    doc = nlp(texto) 
-    entities = [NE for NE in doc.ents]
-    return(entities)
-
-
-def FiltrarEntidades(Entidades, tipo_entidad):
-   entidades = list()
-   for Ent in Entidades:
-        if (Ent.label_ == tipo_entidad):
-            entidades.append(Ent.text)
-   return(entidades)
-
-def ner_texto(texto):
-    nlp = es_core_news_sm.load()
-
-    entidades= ExtraerEntidades(texto)
-    entidadesTipo = FiltrarEntidades(entidades,'LOC')
-
-    return entidades,entidadesTipo
 
 #========================================================================================================
 #NER RECONOCIDO, SE OBTIENE CIUDADES
 #========================================================================================================
 
-#Se verifica que la palabra anterior a la entidad (loc) corresponda a un ADP, de esta forma se deberían obtener dos entidades
-
+#Se obtienen 
 def busqueda_origen_destino(texto):
-   entidades = ner_texto(texto[0])
-   origen_destino =['-1', '-1']
-   aux = 0
+   entidades = glo.ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
+   origen_destino =['-1', '-1'] #Creación de lista de origen_destino, donde se almacenará el string de origen [0] y destino [1]. Se inicializa con '-1' para crear correctamente el texto que se le otorgará al automata
+   aux = 0 #Variable auxiliar para asignar los valores en origen_destino
+   #Se recorren todas las entidades encontradas para así determinar cuales "posiblemente" son locaciones reales
    for i in entidades[1]:
-      i_etiquetado = Etiquetar(i)
-      i_etiquetado_join = ' '.join([w+"<"+t+">" for w,t in i_etiquetado])
-      matching = re.search("<ADP> {}".format(i_etiquetado_join),texto[1])
+      i_etiquetado = glo.Etiquetar(i) #Etiqueta de entidad
+      i_etiquetado_join = ' '.join([w+"<"+t+">" for w,t in i_etiquetado]) #Se une la etiqueta con su entidad
+      matching = re.search("<ADP> {}".format(i_etiquetado_join),texto[1]) #Se realiza un search para encontrar en el texto con etiquetas si es que, antes de la entidad con su etiqueta, existe una palabra con la etiqueta adposition (preposiciones o postposiciones) <ADP>
+      #Se asigna la localidad encontrada a origen_destino
       if matching != None:
-         origen_destino[aux] =i
-         aux +=1
+         #Si origen_destino[aux] esta vacio, se asigna el valor encontrado, por el contrario, se asgina al siguiente espacio
+         if origen_destino[aux] == '-1':
+            origen_destino[aux] =i
+            aux +=1
+         else:
+            aux +=1
+            origen_destino[aux] =i
 
    return origen_destino
 
-#print(origen_destino)
-
-#Si solo se detecta un LOC, se asumira que es destino
-def creacion_dict(origen_destino)#debe recibir origen_destino, fecha1,fecha2, ida_vuelta
-if len(origen_destino)<2:
-   dict_elementos['Destino'] = origen_destino[0]
-else:
-   dict_elementos['Origen'] = origen_destino[0]
-   dict_elementos['Destino'] = origen_destino[1]
 
 
-
-#Creación de texto para automata
-def creacion_texto_automata()
-for key in dict_elementos:
-   if dict_elementos[key] != '-1':
-      auto_texto += key+'>'
-
-
-
-texto = LeerVoz('Wena como estay')
+texto = glo.LeerVoz('Wena como estay')
 origen_destino = busqueda_origen_destino(texto)
-creacion_dict(origen_destino) #esta debe estar actualizada con las otras variables
-creacion_texto_automata()
-print(auto_texto)
+glo.creacion_dict(origen_destino) #esta debe estar actualizada con las otras variables
+print(glo.dict_elementos)
+glo.creacion_texto_automata()
+print(glo.auto_texto)
+
+
+#=================================================================
+#Automata
+#=================================================================
+
+nQ = 8 # Numero de estados
+Sigma = {'','origen>','origen>destino>','fecha_ida>ida_regreso>fecha_regreso>','origen>destino>fecha_ida>','origen>destino>fecha_ida>ida_regreso>fecha_regreso>','fecha_ida>', 'ida_regreso>', 'fecha_regreso>', 'destino>', 'destino>fecha_ida>ida_regreso>fecha_regreso>'}  # Alfabeto (sigma)
+q0 = 0    # Estado inicial
+F = {5}   # Estados finales
+
+TablaTransicion = glo.InicializarDFA(nQ,Sigma)
+Questions = glo.EspecificarPreguntasDFA()
+status = glo.DFA(q0,F,Sigma,Questions,TablaTransicion)
+if (status):
+    print("Aceptado (llegué a estado final)!")
+else:
+    print("Error en la interacción!")
+
 
 
