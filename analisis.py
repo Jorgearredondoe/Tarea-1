@@ -50,35 +50,54 @@ def busqueda_origen_destino(texto):
 
    return origen_destino
 
+#================================================================================
+#Inicio de programa principal
+#================================================================================
 
+#Lectura de voz de requerimiento inicial
+texto = glo.LeerVoz('¿En que lo puedo servir?')
 
-texto = glo.LeerVoz('Wena como estay')
+#Se determina si existe alguna locación dentro del texto recibido
 origen_destino = busqueda_origen_destino(texto)
-glo.creacion_dict(origen_destino) #esta debe estar actualizada con las otras variables
+
+#Se determina si existe alguna fecha dentro del texto recibido
 fechas = ff.funcion_fechas(texto[0])
-print(fechas)
+
+#En caso de existir dos fechas en la variable anterior (ida y regreso) la variable ida_regreso_var será igual a 1
+ida_regreso_var = ff.comparar_fechas(fechas)
+#Se inicializa el diccionario con los valores del requerimiento inicial
+glo.creacion_dict(origen_destino,fechas[0],ida_regreso_var ,fechas[1]) 
 
 print(glo.dict_elementos)
+#Se crea el texto de verificación del automata
 glo.creacion_texto_automata()
 print(glo.auto_texto)
-
 
 #=================================================================
 #Automata
 #=================================================================
-
+#Se crean las variables del automata
 nQ = 8 # Numero de estados
-Sigma = {'','origen>','origen>destino>','fecha_ida>ida_regreso>fecha_regreso>','origen>destino>fecha_ida>','origen>destino>fecha_ida>ida_regreso>fecha_regreso>','fecha_ida>', 'ida_regreso>', 'fecha_regreso>', 'destino>', 'destino>fecha_ida>ida_regreso>fecha_regreso>'}  # Alfabeto (sigma)
+#Sigma = todos los posibles inputs en los estados
+Sigma = {'','fecha_ida>','origen>','origen>destino>','fecha_ida>ida_regreso>fecha_regreso>','origen>destino>fecha_ida>', 'origen>destino>fecha_ida>ida_regreso>','origen>destino>fecha_ida>ida_regreso>fecha_regreso>','fecha_ida>', 'ida_regreso>', 'fecha_regreso>', 'destino>', 'destino>fecha_ida>ida_regreso>fecha_regreso>'}  # 
 q0 = 0    # Estado inicial
-F = {5}   # Estados finales
+F = {5}   # Estado final
 
-#TablaTransicion = glo.InicializarDFA(nQ,Sigma)
-#Questions = glo.EspecificarPreguntasDFA()
-#status = glo.DFA(q0,F,Sigma,Questions,TablaTransicion)
-#if (status):
-#    print("Aceptado (llegué a estado final)!")
-#else:
-#    print("Error en la interacción!")
+#Inicialización de tabla automata
+TablaTransicion = glo.InicializarDFA(nQ,Sigma)
+#Inicialización de preguntas de cada estado
+Questions = glo.EspecificarPreguntasDFA()
+
+#Ingreso a automata
+status = glo.DFA(q0,F,Sigma,Questions,TablaTransicion)
+if (status):
+   print("Aceptado (llegué a estado final)!")
+   if dict_elementos['ida_regreso'] == 1:
+      print('Su origen es {} con destino a {} para el día {} con fecha de regreso {}'.format(dict_elementos['origen'],dict_elementos['destino'],dict_elementos['fecha_ida'],dict_elementos['fecha_regreso']))
+   else:
+      print('Su origen es {} con destino a {} para el día {} sin regreso'.format(dict_elementos['origen'],dict_elementos['destino'],dict_elementos['fecha_ida']))
+else:
+    print("Error en la interacción!")
 
 
 

@@ -2,7 +2,7 @@ import  win32com.client
 import speech_recognition as sr 
 import es_core_news_sm
 import Funct_Fechas as ff
-
+from datetime import datetime
 global auto_texto
 global dict_elementos
 
@@ -106,6 +106,7 @@ def InicializarDFA(nQ,Sigma):
    # LLenar transiciones no vacias
    #Estado 0
    tt[0]['']   = 0
+   tt[0]['fecha_ida>']   = 0
    tt[0]['origen>']   = 6
    tt[0]['origen>destino>'] = 1
    tt[0]['fecha_ida>ida_regreso>fecha_regreso>'] = 7
@@ -126,26 +127,32 @@ def InicializarDFA(nQ,Sigma):
    tt[3]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>']   = 5
 
    #Estado 4
-   tt[4]['origen>destino>fecha_ida>ida_regreso>']   = 5
+   tt[4]['origen>destino>fecha_ida>']   = 5
 
    #Estado 6
+   tt[6]['origen>']   = 6
+   tt[6]['origen>fecha_ida>ida_regreso>fecha_regreso>'] = 6
    tt[6]['origen>destino>']   = 1
-   tt[6]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>']   = 7
+   tt[6]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>']   = 5
 
    #Estado 7
+   tt[7]['fecha_ida>ida_regreso>fecha_regreso>'] = 7
    tt[7]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
+   tt[7]['origen>fecha_ida>ida_regreso>fecha_regreso>'] = 6
+
+   
 
 
    return(tt)
 
 def EspecificarPreguntasDFA():
-   Quest = ["Qué tipo de servicio requiere? ",
-            "¿Cual es su fecha de ida? ",
-            "¿Necesita vuelo de vuelta? ",
-            "¿Para cuando necesita su vuelo de vuelta?",
-            "No necesita vuelo de vuelta",
-            "Se esta procesando su consulta",
-            "¿Cuál es su destino?",
+   Quest = ["Por favor ingrese una respuesta valida (ejemplo: localización, fechas, etc)",
+            "¿Indique su Fecha de Ida", 
+            "¿Necesita vuelo de vuelta? ", 
+            "¿Para cuando necesita su vuelo de regreso?", 
+            "No necesita vuelo de vuelta", 
+            "Se esta procesando su consulta", 
+            "¿Cuál es su destino?", #
             "¿Cual es su origen y Destino"
             ]
    return(Quest)
@@ -158,28 +165,27 @@ def DFA(Q0,F,Sigma,Quest,TablaTrans):
    # Repita hasta que llegue a un estado final o de error
    var_aux = 0
    while ( not(q in F)   and  (q != _ERROR)):
+      #Se resetea auto_texto (global), así no se concatena el strign anterior
       if var_aux == 1:
          auto_texto = ''
          var_aux = 0
       
       #print('estado',q)
       if q == 1:
-         print('Llegue al estado 1')
-         #Sym = q1_input()#si auto_texto es global, no será necesario que retorne nada
+         q1_input(Quest[q])
       elif q == 2:
-         Sym = q2_input()
+         q2_input(Quest[q])
       elif q == 3:
-         Sym = q3_input()
+         q3_input(Quest[q])
       elif q == 4:
-         Sym = q4_input()
-      elif q == 5:
-         Sym = q5_input()
+         q4_input(Quest[q])
       elif q == 6:
-         print('Llegue al estado 6')
-         Sym = q6_input()
-      else:
-         print(auto_texto)
-         Sym  = auto_texto
+         q6_input(Quest[q])
+      elif q == 7:
+         q7_input(Quest[q])
+      
+      print('auto_texto estado {}: {}'.format(q,auto_texto))
+      Sym  = auto_texto
       try:
          TablaTrans[q][Sym]
       except KeyError:
@@ -191,47 +197,80 @@ def DFA(Q0,F,Sigma,Quest,TablaTrans):
    return(q in F)
 
 
-def q1_input():
-   #tal vez hay que poner un while variable distinto de None, se repita el loop y vuelva a preguntar
-   print('Indicame fecha ida y de regreso')
-   texto = LeerVoz('Wena como estay')
+def q1_input(pregunta_estado):
+   texto = LeerVoz(pregunta_estado)
    #llamar buqueda fecha
-   creacion_dict(origen_destino) #esta debe estar actualizada con las otras variables
+   fechas = ff.funcion_fechas(texto[0])
+   fecha_compare = ff.comparar_fechas(fechas)
+   creacion_dict(['-1','-1'], fechas[0], fecha_compare, fechas[1]) #esta debe estar actualizada con las otras variables
    creacion_texto_automata()
-   
 
 
+def q2_input(pregunta_estado):
+   while aux == 0:
+      texto = LeerVoz(pregunta_estado)
+      #Se chequea en el texto que exista la palabra "si" o "no" (sinonimos tambien) y así determinará a que estado seguir
+      #Tendra prioridad el si, por lo que si se responde "Si no", será tomado como un si
+      if re.search("si", texto.lower()) != None or re.search("claro", texto.lower()) != None or re.search("afirmativo", texto.lower()) != None or re.search("efectivamente", texto.lower()) != None:
+         creacion_dict(['-1','-1'], '-1', 1, '-1' #esta debe estar actualizada con las otras variables
+         aux = 1
+      elif re.search("no", texto.lower()) != None or re.search("negativo", texto.lower()) != None or re.search("nunca", texto.lower()) != None or re.search("jamas", texto.lower()) != None:
+         aux = 1
+         pass
+      elif re.search("no", texto.lower()) == None and re.search("si", texto.lower()) == None:
+         print('Requerimiento no valido, ingrese nuevamente\n')
+   creacion_texto_automata()
 
-def q2_input():
-      print('Indicame Placeholder')
+def q3_input(pregunta_estado):
+   texto = LeerVoz(pregunta_estado)
+   #llamar buqueda fecha
+   fechas = ff.funcion_fechas(texto[0])
+   fecha_compare = ff.comparar_fechas(fechas)
+   creacion_dict(['-1','-1'], fechas[0], fecha_compare, fechas[1]) #esta debe estar actualizada con las otras variables
+   creacion_texto_automata()
 
-def q3_input():
-   print('Indicame Placeholder')
 
-def q4_input():
-   print('Indicame Placeholder')
+def q4_input(pregunta_estado):
+   print(pregunta_estado)
 
-def q5_input():
-   print('Indicame Placeholder')
-
-def q6_input():
+def q6_input(pregunta_estado):
    texto = LeerVoz('Indicame el destino')
    entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
    print(entidades[1])
    destino = ['-1', entidades[1]]
-   creacion_dict(destino) #esta debe estar actualizada con las otras variables
+   creacion_dict(destino,-1,-1,-1) #esta debe estar actualizada con las otras variables
    creacion_texto_automata()
-   print(dict_elementos)
-   print(auto_texto)
+   
+
+def q7_input(pregunta_estado):
+   print('Indicame Placeholder')
+
 
 
 
 #Si solo se detecta un LOC, se asignará a destino
-def creacion_dict(origen_destino = '-1', fecha_ida = '-1', fecha_regreso = '-1',ida_regreso = 0): #debe recibir origen_destino, fecha1,fecha2, ida_vuelta
+def creacion_dict(origen_destino = ['-1','-1'], fecha_ida = '-1',ida_regreso = '-1', fecha_regreso = '-1'): #debe recibir 
+   #origen y destino
    if dict_elementos['origen'] == '-1':
       dict_elementos['origen'] = origen_destino[0]
    if dict_elementos['destino'] == '-1':
       dict_elementos['destino'] = origen_destino[1]
+   
+   #ida y vuelta
+   if ida_regreso != '-1' and dict_elementos['ida_regreso'] == '-1':
+      dict_elementos['ida_regreso'] = ida_regreso
+
+   #fechas
+   if fecha_ida != '-1' and dict_elementos['fecha_ida'] == '-1':
+      dict_elementos['fecha_ida'] = fecha_ida
+   if fecha_regreso != '-1' and dict_elementos['fecha_regreso'] == '-1':
+      dict_elementos['fecha_regreso'] = fecha_regreso
+   if dict_elementos['fecha_ida'] != '-1' and dict_elementos['fecha_regreso']!= '-1':
+      dates = [dict_elementos['fecha_ida'], dict_elementos['fecha_regreso']]
+      #dates.sort(key = lambda date: datetime.strptime(date, '%d/%m/%Y'))
+      dict_elementos['fecha_ida'] = dates[0]
+      dict_elementos['fecha_regreso'] = dates[1]
+
 
 
 
@@ -241,4 +280,3 @@ def creacion_texto_automata():
    for key in dict_elementos:
       if dict_elementos[key] != '-1':
          auto_texto += key+'>'
-   
