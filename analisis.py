@@ -72,13 +72,13 @@ Sigma = {'','origen>','origen>destino>','fecha_ida>ida_regreso>fecha_regreso>','
 q0 = 0    # Estado inicial
 F = {5}   # Estados finales
 
-TablaTransicion = glo.InicializarDFA(nQ,Sigma)
-Questions = glo.EspecificarPreguntasDFA()
-status = glo.DFA(q0,F,Sigma,Questions,TablaTransicion)
-if (status):
-    print("Aceptado (llegué a estado final)!")
-else:
-    print("Error en la interacción!")
+#TablaTransicion = glo.InicializarDFA(nQ,Sigma)
+#Questions = glo.EspecificarPreguntasDFA()
+#status = glo.DFA(q0,F,Sigma,Questions,TablaTransicion)
+#if (status):
+#    print("Aceptado (llegué a estado final)!")
+#else:
+#    print("Error en la interacción!")
 
 
 

@@ -8,23 +8,27 @@ Created on Sat May  8 13:20:30 2021
 import nltk
 import es_core_news_sm
 import dateparser
-#IMPORTANTE REALIZAR pip install dateparser
 
 def funcion_fechas(texto):
-  nlp       = es_core_news_sm.load()
+  nlp = es_core_news_sm.load()
+  texto = str(texto)
+  
+    
   # Se comienza haciendo un Etiquetado
   doc = nlp(texto)
   tagged = [(t.text,t.pos_) for t in doc]
   # el operador "*" significa 0 o más veces
-
+  
   # Se establece la regla gramatical para encontrar las fechas
   grammar = '''                                                                                                              
     FN:                                                                                                                    
-      {<NUM><ADP><NOUN><ADP>*<NUM>*}
+       {<NUM><ADP><NOUN>}
+    FN2:
+       {<NUM><ADP><NOUN><ADP>*<NUM>*}
     '''
   chunker = nltk.chunk.RegexpParser(grammar)
   Arbol = chunker.parse(tagged)
-
+  
   # Se guardan las fechas encontradas en una lista
   fechas = []
   for subarbol in Arbol.subtrees():
@@ -50,16 +54,16 @@ def funcion_fechas(texto):
         for dia in texto_a_numero:
             fecha = fecha.replace(dia,str(n))
             n += 1
-        print('fecha',fecha)
+
         # Se pasa de texto a formato de fecha para realizar la comparasion
         fecha1 = dateparser.parse(fecha)
-        print('fecha1',fecha1)
+        
         fechas_2.append(fecha1)
 
   fechas_2.sort()
-  print(fechas_2)
   fecha_ida = fechas_2[0].strftime('%d/%m/%Y')
   fecha_regreso = fechas_2[1].strftime('%d/%m/%Y')
   return (fecha_ida,fecha_regreso)
+
 
 
