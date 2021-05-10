@@ -59,7 +59,10 @@ def ASR():
 #Realiza lematización de una frase input, retorna un string con cada palabra del input estandarizada
 def Lematizar(texto):
    nlp       = es_core_news_sm.load()
-   doc = nlp(texto)
+   try:
+      doc = nlp(texto)
+   except:
+      pass
    lemas = [token.lemma_ for token in doc]
    return(" ".join(lemas))
 
@@ -69,6 +72,24 @@ def Etiquetar(texto):
    doc = nlp(texto)
    Etiquetado = [(t.text,t.pos_) for t in doc]
    return(Etiquetado)
+
+def busqueda_origen_destino(texto):
+   entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
+   origen_destino =['-1', '-1'] #Creación de lista de origen_destino, donde se almacenará el string de origen [0] y destino [1]. Se inicializa con '-1' para crear correctamente el texto que se le otorgará al automata
+   #Se recorren todas las entidades encontradas para así determinar cuales "posiblemente" son locaciones reales
+   for i in entidades[1]:
+      i_etiquetado = Etiquetar(i) #Etiqueta de entidad
+      i_etiquetado_join = ' '.join([w+"<"+t+">" for w,t in i_etiquetado]) #Se une la etiqueta con su entidad
+      #print(texto[1])
+      matching = re.search("de<ADP> {}".format(i_etiquetado_join),texto[1]) #Se realiza un search para encontrar en el texto con etiquetas si es que, antes de la entidad con su etiqueta, existe una palabra con la etiqueta adposition (preposiciones o postposiciones) <ADP>
+      matching2 = re.search("(a<ADP>|hacia<ADP>|para<ADP>) {}".format(i_etiquetado_join),texto[1])
+      #Se asigna la localidad encontrada a origen_destino
+      if matching != None:
+         origen_destino[0] =i
+      if matching2 != None:
+         origen_destino[1] =i
+
+   return origen_destino
 
 
 #Función NER para realizar Parsing Parsial al texto input. Las entidades que se identificarán con esta función son Locaciones o ubicaciones (LOC) a partir del corpus es_core_news_sm
@@ -106,10 +127,11 @@ def InicializarDFA(nQ,Sigma):
 
    # LLenar transiciones no vacias
    #Estado 0
-   tt[0]['']   = 0
-   tt[0]['fecha_ida>']   = 0
+   #tt[0]['fecha_ida>']   = 0
    tt[0]['origen>']   = 6
+   tt[0]['destino>']   = 9
    tt[0]['origen>destino>'] = 1
+   tt[0]['destino>fecha_ida>']   = 10
    tt[0]['fecha_ida>ida_regreso>fecha_regreso>'] = 7
    tt[0]['origen>destino>fecha_ida>'] = 2
    tt[0]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
@@ -147,6 +169,16 @@ def InicializarDFA(nQ,Sigma):
    tt[8]['origen>fecha_ida>']   = 8
    tt[8]['origen>destino>fecha_ida>']   = 2
 
+   #Estado 9
+   tt[9]['destino>']   = 9
+   tt[9]['origen>destino>']   = 1
+   tt[9]['origen>destino>fecha_ida>']   = 2
+   tt[9]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
+
+   #Estado 10
+   tt[10]['origen>fecha_ida>']   = 10
+   tt[10]['origen>destino>fecha_ida>']   = 2
+   tt[10]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
 
 
 
@@ -161,7 +193,9 @@ def EspecificarPreguntasDFA():
             "Se esta procesando su consulta", 
             "¿Cuál es su destino?", 
             "¿Cual es su origen y Destino",
-            "Fecha de ida recibida. Indique su Destino"
+            "Fecha de ida recibida. Indique su Destino",
+            "Indique su origen",
+            "Indique su origen"
             ]
    return(Quest)
 
@@ -193,7 +227,11 @@ def DFA(Q0,F,Sigma,Quest,TablaTrans):
          q7_input(Quest[q])
       elif q == 8:
          q8_input(Quest[q])
-      #print('auto_texto estado {}: {}'.format(q,auto_texto))
+      elif q == 9:
+         q9_input(Quest[q])
+      elif q == 10:
+         q10_input(Quest[q])
+      print('auto_texto estado {}: {}'.format(q,auto_texto))
       Sym  = auto_texto
       try:
          TablaTrans[q][Sym]
@@ -246,8 +284,7 @@ def q4_input(pregunta_estado):
 
 
 def q6_input(pregunta_estado):
-   print(pregunta_estado)
-   texto = LeerVoz('Indicame el destino')
+   texto = LeerVoz(pregunta_estado)
    fechas = ff.funcion_fechas(texto[0])
    fecha_compare = ff.comparar_fechas(fechas)
    entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
@@ -258,23 +295,56 @@ def q6_input(pregunta_estado):
       pass
    creacion_dict(['-1','-1'],fechas[0],fecha_compare,fechas[1])
    creacion_texto_automata()
-   print(auto_texto)
    
    
 
 def q7_input(pregunta_estado):
-   print(pregunta_estado)
+   texto = LeerVoz(pregunta_estado)
+   entidades = ner_texto(texto[0])
+   if len(entidades[0]) == 1:
+      origen_arr = [str(entidades[0][0]),'-1']
+      creacion_dict(origen_arr,'-1','-1','-1')  
+
+   elif len(entidades[1]) == 2:
+      origen_destino_arr = [str(entidades[0][0]),str(entidades[0][1])]
+      creacion_dict(origen_destino_arr,'-1','-1','-1')  
    creacion_texto_automata()
 
 def q8_input(pregunta_estado):
-   print(pregunta_estado)
-   texto = LeerVoz('Indicame el destino')
+   texto = LeerVoz(pregunta_estado)
    entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
    try:
       destino = ['-1', str(entidades[0][0])]
       creacion_dict(destino,'-1','-1','-1')
    except:
       pass
+   creacion_texto_automata()
+
+
+def q9_input(pregunta_estado):
+   texto = LeerVoz(pregunta_estado)
+   entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
+   try:
+      origen = [str(entidades[0][0]), '-1']
+      creacion_dict(origen,'-1','-1','-1')
+   except:
+      pass
+   fechas = ff.funcion_fechas(texto[0])
+   fecha_compare = ff.comparar_fechas(fechas)
+   creacion_dict(['-1','-1'],fechas[0],fecha_compare,fechas[1])
+   creacion_texto_automata()
+
+def q10_input(pregunta_estado):
+   texto = LeerVoz(pregunta_estado)
+   entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
+   try:
+      origen = [str(entidades[0][0]), '-1']
+      creacion_dict(origen,'-1','-1','-1')
+   except:
+      pass
+   fechas = ff.funcion_fechas(texto[0])
+   if fechas[0] != '-1':
+      creacion_dict(['-1','-1'],'-1',1,fechas[0])
    creacion_texto_automata()
 
 
