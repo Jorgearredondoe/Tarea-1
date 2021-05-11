@@ -1,1 +1,1 @@
-print(["foo", "bar", "baz"].index("hola"))
+LeerVoz

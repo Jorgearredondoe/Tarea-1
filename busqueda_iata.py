@@ -1,5 +1,5 @@
 import pandas as pd
-
+#Función que busca el código IATA de la ciudad dentro de una base de datos de aeropuertos
 def busqueda_iata_code(ciudad):
   #Se transforma el input a lowercase y se transforman los tildes a sus vocales originales
   ciudad = ciudad.lower()

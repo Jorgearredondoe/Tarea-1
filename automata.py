@@ -6,6 +6,7 @@ from datetime import datetime
 global auto_texto
 global dict_elementos
 import re
+
 # Variable global de texto de input para automata
 auto_texto = ''
 #Creación diccionario para mapear los datos obtenidos
@@ -18,7 +19,22 @@ dict_elementos = {'origen' : '-1',
 
 
 
+#============================================================================
+#TTS
+#============================================================================
+#Inicialización de tts
+def inicializarTTS():
+   rate = -2  # de -10 (lento) a 10 (rapido)
+   speak = win32com.client.Dispatch('Sapi.SpVoice')
+   speak.Voice = speak.GetVoices().Item(1) #Cambiar a 1 logra funcionar bien, default = 2
+   speak.Rate = rate
+   return(speak.Speak)
 
+
+
+#============================================================================
+#ASR
+#============================================================================
 #Función que "lee la voz", esta llama a ASR para determinar el input del usuario, además de realizar la lematización y POS tagging. Este retorna una tupla con tres valores, el texto reconocido por ASR, texto unido con sus etiquetas y las etiquetas.
 def LeerVoz(question):
    #speak = inicializarTTS()
@@ -27,10 +43,10 @@ def LeerVoz(question):
    #  Reconocer respuesta hablada
    print("="*40)
    print(question)
-   print('Hable ahora:')
+   print('Hable Ahora:')
    texto = ASR() #Se obtiene el input del usuario
    texto = Lematizar(texto) #Lematización del input usuario
-   print('dijiste',texto)
+   #print('dijiste',texto)
    print()
    etiqueta = Etiquetar(texto) #Etiquetado del input usuario lematizado
    texto_etiqueta = ' '.join([w+"<"+t+">" for w,t in etiqueta]) #Unión de texto lematizado con sus etiquetas ejemplo: "a<ADP> casa<NOUN>"
@@ -47,18 +63,21 @@ def ASR():
       texto_reconocido = r.recognize_google(audio, language='es-es') #Reconocimiento de voz, lenguaje español
    #En caso de que no se reconozca el audio o no se obtenga requerimiento se retorna 0
    except sr.UnknownValueError:
-      #speak("Por favor, intente nuevamente")
       print("Por favor, intente nuevamente")
       return 0
    except sr.RequestError as e:
-      #speak("No obtuve ningun requerimiento {0}".format(e))
       print("No obtuve ningun requerimiento {0}".format(e))
       return 0
    return(texto_reconocido)
 
+
+
+#============================================================================
+#Lematización
+#============================================================================
 #Realiza lematización de una frase input, retorna un string con cada palabra del input estandarizada
 def Lematizar(texto):
-   nlp       = es_core_news_sm.load()
+   nlp = es_core_news_sm.load()
    try:
       doc = nlp(texto)
       lemas = [token.lemma_ for token in doc]
@@ -67,6 +86,10 @@ def Lematizar(texto):
       return 0
    
 
+
+#============================================================================
+#POS Tagging
+#============================================================================
 #Realiza POS tagging del texto input a partir del corpus es_core_news_sm, este retorna una lista con las etiquetas de cada palabra del texto
 def Etiquetar(texto):
    nlp = es_core_news_sm.load()
@@ -74,25 +97,11 @@ def Etiquetar(texto):
    Etiquetado = [(t.text,t.pos_) for t in doc]
    return(Etiquetado)
 
-def busqueda_origen_destino(texto):
-   entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
-   origen_destino =['-1', '-1'] #Creación de lista de origen_destino, donde se almacenará el string de origen [0] y destino [1]. Se inicializa con '-1' para crear correctamente el texto que se le otorgará al automata
-   #Se recorren todas las entidades encontradas para así determinar cuales "posiblemente" son locaciones reales
-   for i in entidades[1]:
-      i_etiquetado = Etiquetar(i) #Etiqueta de entidad
-      i_etiquetado_join = ' '.join([w+"<"+t+">" for w,t in i_etiquetado]) #Se une la etiqueta con su entidad
-      #print(texto[1])
-      matching = re.search("(de<ADP>|desde<ADP>|origen<NOUN>) {}".format(i_etiquetado_join),texto[1]) #Se realiza un search para encontrar en el texto con etiquetas si es que, antes de la entidad con su etiqueta, existe una palabra con la etiqueta adposition (preposiciones o postposiciones) <ADP>
-      matching2 = re.search("(a<ADP>|hacia<ADP>|para<ADP>|destino<NOUN>) {}".format(i_etiquetado_join),texto[1])
-      #Se asigna la localidad encontrada a origen_destino
-      if matching != None:
-         origen_destino[0] =i
-      if matching2 != None:
-         origen_destino[1] =i
-
-   return origen_destino
 
 
+#============================================================================
+#NER
+#============================================================================
 #Función NER para realizar Parsing Parsial al texto input. Las entidades que se identificarán con esta función son Locaciones o ubicaciones (LOC) a partir del corpus es_core_news_sm
 def ner_texto(texto):
     nlp = es_core_news_sm.load()
@@ -116,7 +125,31 @@ def FiltrarEntidades(Entidades, tipo_entidad):
             entidades.append(Ent.text)
    return(entidades)
 
+#============================================================================
+#Función de Búqueda Origen y Destino
+#============================================================================
+def busqueda_origen_destino(texto):
+   entidades = ner_texto(texto[0])#Entrega tupla con entidades, y entidadesTipo
+   origen_destino =['-1', '-1'] #Creación de lista de origen_destino, donde se almacenará el string de origen [0] y destino [1]. Se inicializa con '-1' para crear correctamente el texto que se le otorgará al automata
+   #Se recorren todas las entidades encontradas para así determinar cuales "posiblemente" son locaciones reales
+   for i in entidades[1]:
+      i_etiquetado = Etiquetar(i) #Etiqueta de entidad
+      i_etiquetado_join = ' '.join([w+"<"+t+">" for w,t in i_etiquetado]) #Se une la etiqueta con su entidad
+      #print(texto[1])
+      matching = re.search("(de<ADP>|desde<ADP>|origen<NOUN>) {}".format(i_etiquetado_join),texto[1]) #Se realiza un search del origen para encontrar en el texto con etiquetas si es que, antes de la entidad con su etiqueta, existe una palabra con la etiqueta correspondiente
+      matching2 = re.search("(a<ADP>|hacia<ADP>|para<ADP>|destino<NOUN>) {}".format(i_etiquetado_join),texto[1]) #Se realiza un search del destino para encontrar en el texto con etiquetas si es que, antes de la entidad con su etiqueta, existe una palabra con la etiqueta correspondiente
 
+      #Se asigna el origen y destino
+      if matching != None:
+         origen_destino[0] =i
+      if matching2 != None:
+         origen_destino[1] =i
+
+   return origen_destino
+
+#============================================================================
+#DFA
+#============================================================================
 def InicializarDFA(nQ,Sigma):
    _ERROR = (-1)   # Estado de error
    tt = {}
@@ -126,7 +159,6 @@ def InicializarDFA(nQ,Sigma):
       for Sym in Sigma:
          tt[numQ][Sym] = _ERROR
 
-   # LLenar transiciones no vacias
    #Estado 0
    tt[0]['fecha_ida>']   = 12
    tt[0]['origen>']   = 6
@@ -188,26 +220,26 @@ def InicializarDFA(nQ,Sigma):
    tt[11]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
 
    #Estado 12
-   tt[11]['fecha_ida>']   = 12
+   tt[12]['fecha_ida>']   = 12
+   tt[12]['origen>fecha_ida>']   = 11
+   tt[12]['origen>destino>fecha_ida>']   = 2
   
-
-
-
    return(tt)
 
 def EspecificarPreguntasDFA():
-   Quest = ["Por favor ingrese una respuesta valida (ejemplo: localización, fechas, etc)",
+   Quest = ["Bienvenido al asistente de LAN.com, ¿En qué lo puedo servir?",
             "Indique su Fecha de Ida", 
             "¿Necesita vuelo de vuelta? ", 
             "¿Para cuando necesita su vuelo de regreso?", 
             "No necesita vuelo de vuelta", 
             "Se esta procesando su consulta", 
             "¿Cuál es su destino?", 
-            "¿Cual es su origen y Destino",
+            "¿Cual es su origen y Destino?",
             "Fecha de ida recibida. Indique su Destino",
             "Indique su origen",
             "Indique su origen",
-            "Indique su destino"
+            "Indique su destino",
+            "Indique su origen"
             ]
    return(Quest)
 
@@ -217,14 +249,14 @@ def DFA(Q0,F,Sigma,Quest,TablaTrans):
    _ERROR = (-1)   # Estado de error
    q=Q0    # Estado inicial
    # Repita hasta que llegue a un estado final o de error
-   var_aux = 0
+   var_aux = 0 #Variable auxiliar para resetear auto_texto
    while ( not(q in F)   and  (q != _ERROR)):
-      #Se resetea auto_texto (global), así no se concatena el strign anterior
+      #Se resetea auto_texto (global), así no se concatena el string anterior
       if var_aux == 1:
          auto_texto = ''
          var_aux = 0
-      
       #print('estado',q)
+      #Si encuentra un estado, activa la función de este estado para solicitar los datos faltantes
       if q == 1:
          q1_input(Quest[q])
       elif q == 2:
@@ -245,7 +277,10 @@ def DFA(Q0,F,Sigma,Quest,TablaTrans):
          q10_input(Quest[q])
       elif q == 11:
          q11_input(Quest[q])
+      elif q == 12:
+         q12_input(Quest[q])
       #print('auto_texto estado {}: {}'.format(q,auto_texto))
+      #Se actualiza Sym con auto_texto
       Sym  = auto_texto
       try:
          TablaTrans[q][Sym]
@@ -254,19 +289,24 @@ def DFA(Q0,F,Sigma,Quest,TablaTrans):
          break
       # Asigne el siguiente estado de la tabla o bien ERROR si no existe
       q = (_ERROR if (not(Sym in Sigma)) else TablaTrans[q][Sym])
-      var_aux = 1
+      var_aux = 1 #Variable auxiliar = 1, se resetea auto_texto
    return(q in F)
 
+#============================================================================
+#Estados DFA
+#============================================================================
 
+#Estado 1
+#Indique su Fecha de Ida
 def q1_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
-   #llamar buqueda fecha
-   fechas = ff.funcion_fechas(texto[0])
-   fecha_compare = ff.comparar_fechas(fechas)
+   fechas = ff.funcion_fechas(texto[0]) #Se detectan fechas
+   fecha_compare = ff.comparar_fechas(fechas) #Se detecta si ingresan más de una fecha
    creacion_dict(['-1','-1'], fechas[0], fecha_compare, fechas[1]) #esta debe estar actualizada con las otras variables
-   creacion_texto_automata()
+   creacion_texto_automata() #Actualiación texto automata
 
-
+#Estado 2
+#¿Necesita vuelo de vuelta?
 def q2_input(pregunta_estado):
    aux_var = 0
    while aux_var == 0:
@@ -274,110 +314,163 @@ def q2_input(pregunta_estado):
       #Se chequea en el texto que exista la palabra "si" o "no" (sinonimos tambien) y así determinará a que estado seguir
       #Tendra prioridad el si, por lo que si se responde "Si no", será tomado como un si
       if re.search("si", texto[0].lower()) != None or re.search("claro", texto[0].lower()) != None or re.search("afirmativo", texto[0].lower()) != None or re.search("efectivamente", texto[0].lower()) != None or re.search("sí", texto[0].lower()):
+         #Se actualiza el diccionario con la variable binaria ida_vuelta = 1
          creacion_dict(['-1','-1'], '-1', 1, '-1') #esta debe estar actualizada con las otras variables
          aux_var = 1
       elif re.search("no", texto[0].lower()) != None or re.search("negativo", texto[0].lower()) != None or re.search("nunca", texto[0].lower()) != None or re.search("jamas", texto[0].lower()) != None:
          aux_var = 1
          pass
+      #Requerimiento no valido
       elif re.search("no", texto[0].lower()) == None and (re.search("si", texto[0].lower()) == None or re.search("sí", texto[0].lower()) == None):
          print('Requerimiento no valido, ingrese nuevamente\n')
-   creacion_texto_automata()
+   creacion_texto_automata() #Actualiación texto automata
 
+
+#Estado 3
+#¿Para cuando necesita su vuelo de regreso?
 def q3_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
-   #llamar buqueda fecha
-   fechas = ff.funcion_fechas(texto[0])
-   fecha_compare = ff.comparar_fechas(fechas)
-   creacion_dict(['-1','-1'], fechas[1], fecha_compare, fechas[0]) #esta debe estar actualizada con las otras variables
-   creacion_texto_automata()
+   fechas = ff.funcion_fechas(texto[0]) #Busqueda de fechas
+   fecha_compare = ff.comparar_fechas(fechas) #Se determina si es que fueron entregado dos fechas, se determina ida y vuelta
+   creacion_dict(['-1','-1'], fechas[1], fecha_compare, fechas[0]) #Actualización de diccionario
+   creacion_texto_automata() #Actualiación texto automata
 
-
+#Estado 4
+#No necesita vuelo de vuelta
 def q4_input(pregunta_estado):
-   print(pregunta_estado)
-   creacion_texto_automata()
+   print(pregunta_estado) #No realiza acción, pasa a estado final
+   creacion_texto_automata() #Actualiación texto automata
 
-
+#Estado 6
+#¿Cuál es su destino?
 def q6_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
-   fechas = ff.funcion_fechas(texto[0])
-   fecha_compare = ff.comparar_fechas(fechas)
-   entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
+   fechas = ff.funcion_fechas(texto[0]) #busqueda de fechas
+   fecha_compare = ff.comparar_fechas(fechas) #Se determina si es que fueron entregado dos fechas, se determina ida y vuelta
+   entidades = ner_texto(texto[0])
    try:
       destino = ['-1', str(entidades[0][0])]
+      #Se asigna la entidad encontrada en la posicion 2 de locación del diccionario, es decir, destino
       creacion_dict(destino,'-1','-1','-1')
    except:
       pass
-   creacion_dict(['-1','-1'],fechas[0],fecha_compare,fechas[1])
-   creacion_texto_automata()
-   
+   creacion_dict(['-1','-1'],fechas[0],fecha_compare,fechas[1]) #Actualización de diccionario con las fechas
+   creacion_texto_automata() #Actualiación texto automata
    
 
+#Estado 7
+#¿Cual es su origen y Destino?
 def q7_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
    entidades = ner_texto(texto[0])
+   #Si solo se encuentra una entidad, se asigna como origen
    if len(entidades[0]) == 1:
       origen_arr = [str(entidades[0][0]),'-1']
+      #Se asigna la entidad encontrada en la posicion 1 de locación del diccionario, es decir, origen
       creacion_dict(origen_arr,'-1','-1','-1')  
-
+   #Si se encuentran dos, se asigna origen y destino
    elif len(entidades[1]) == 2:
       origen_destino_arr = [str(entidades[0][0]),str(entidades[0][1])]
+      #Se asigna las entidades encontradas, en la posicion 1 y 2 de locación del diccionario, es decir, origen y destino
       creacion_dict(origen_destino_arr,'-1','-1','-1')  
-   creacion_texto_automata()
+   creacion_texto_automata() #Actualiación texto automata
 
+
+#Estado 8
+#Fecha de ida recibida. Indique su Destino
 def q8_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
    entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
    try:
       destino = ['-1', str(entidades[0][0])]
+      #Se asigna la entidad encontrada, en la posicion 2 de locación del diccionario, es decir, destino
       creacion_dict(destino,'-1','-1','-1')
    except:
       pass
-   creacion_texto_automata()
+   creacion_texto_automata() #Actualiación texto automata
 
 
+#Estado 9
+#Indique su origen
 def q9_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
    entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
    try:
       origen = [str(entidades[0][0]), '-1']
+      #Se asigna la entidad encontrada, en la posicion 1 de locación del diccionario, es decir, origen
       creacion_dict(origen,'-1','-1','-1')
    except:
       pass
+   #Se revisa si existen fechas en el requerimiento
    fechas = ff.funcion_fechas(texto[0])
-   fecha_compare = ff.comparar_fechas(fechas)
+   fecha_compare = ff.comparar_fechas(fechas)#Se determina si es que fueron entregado dos fechas, se determina ida y vuelta
    creacion_dict(['-1','-1'],fechas[0],fecha_compare,fechas[1])
-   creacion_texto_automata()
+   creacion_texto_automata() #Actualiación texto automata
 
+
+
+#Estado 10
+#Indique su origen
 def q10_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
    entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
    try:
       origen = [str(entidades[0][0]), '-1']
+      #Se asigna la entidad encontrada, en la posicion 1 de locación del diccionario, es decir, origen
       creacion_dict(origen,'-1','-1','-1')
    except:
       pass
-   fechas = ff.funcion_fechas(texto[0])
+   fechas = ff.funcion_fechas(texto[0])#Se busca si existe fecha de regreso
    if fechas[0] != '-1':
       creacion_dict(['-1','-1'],'-1',1,fechas[0])
-   creacion_texto_automata()
+   creacion_texto_automata() #Actualiación texto automata
 
+
+#Estado 11
+#Indique su destino
 def q11_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
-   entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
+   entidades = ner_texto(texto[0])
    try:
       destino = ['-1',str(entidades[0][0])]
+      #Se asigna la entidad encontrada, en la posicion 2 de locación del diccionario, es decir, DESTINO
       creacion_dict(destino,'-1','-1','-1')
    except:
       pass
-   fechas = ff.funcion_fechas(texto[0])
+   fechas = ff.funcion_fechas(texto[0]) #Se busca por fecha de regreso, en caso de que exista
    if fechas[0] != '-1':
       creacion_dict(['-1','-1'],'-1',1,fechas[0])
-   creacion_texto_automata()
+   creacion_texto_automata()#Actualiación texto automata
+
+#Estado 12
+#Indique su origen
+def q12_input(pregunta_estado):
+   texto = LeerVoz(pregunta_estado)
+   entidades = ner_texto(texto[0])
+   #Se verifica cuantas entidades se encontraron.
+   #En caso de ser 1, se asigna de origen. Si se reciben dos, estas se asignan como origen y destino
+   if len(entidades[0]) == 1:
+      try:
+         destino = [str(entidades[0][0]),'-1']
+         #Se asigna la entidad encontrada, en la posicion 2 de locación del diccionario, es decir, DESTINO
+         creacion_dict(destino,'-1','-1','-1')
+      except:
+         pass
+   elif len(entidades[0]) == 2:
+      try:
+         destino = [str(entidades[0][0]),str(entidades[0][1])]
+         #Se asigna la entidad encontrada, en la posicion 2 de locación del diccionario, es decir, DESTINO
+         creacion_dict(destino,'-1','-1','-1')
+      except:
+         pass
+   creacion_texto_automata()#Actualiación texto automata
 
 
 
 
-
+#============================================================================
+#Creación Diccionario (dict_elementos) y texto_automata(auto_texto)
+#============================================================================
 #Si solo se detecta un LOC, se asignará a destino
 def creacion_dict(origen_destino = ['-1','-1'], fecha_ida = '-1',ida_regreso = '-1', fecha_regreso = '-1'): #debe recibir 
    #origen y destino
@@ -406,6 +499,7 @@ def creacion_dict(origen_destino = ['-1','-1'], fecha_ida = '-1',ida_regreso = '
 def creacion_texto_automata():
    global auto_texto
    for key in dict_elementos:
+      #Si la key esta vacía ('-1'), significa que ese dato aun no es obtenido, por lo que se genera el auto_texto con lso datos que solamente han sido obtenidos
       if dict_elementos[key] != '-1':
          auto_texto += key+'>'
    
