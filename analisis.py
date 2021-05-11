@@ -53,7 +53,7 @@ while (glo.auto_texto == ''):
 #Automata
 #=================================================================
 #Se crean las variables del automata
-nQ = 11 # Numero de estados
+nQ = 13 # Numero de estados
 #Sigma = todos los posibles inputs en los estados
 Sigma = {'','fecha_ida>','origen>','origen>destino>','fecha_ida>ida_regreso>fecha_regreso>','origen>destino>fecha_ida>', 'origen>destino>fecha_ida>ida_regreso>','origen>destino>fecha_ida>ida_regreso>fecha_regreso>','fecha_ida>', 'ida_regreso>','origen>fecha_ida>' ,'fecha_regreso>', 'destino>', 'destino>fecha_ida>ida_regreso>fecha_regreso>', 'origen>fecha_ida>ida_regreso>fecha_regreso>', 'destino>','destino>fecha_ida>'}  # 
 q0 = 0    # Estado inicial
@@ -67,28 +67,30 @@ Questions = glo.EspecificarPreguntasDFA()
 #Ingreso a automata
 status = glo.DFA(q0,F,Sigma,Questions,TablaTransicion)
 if (status):
+   ciudades = [glo.dict_elementos['origen'] ,glo.dict_elementos['destino']]
    print()
    print('='*50)
    if glo.dict_elementos['ida_regreso'] == 1:
       print('Su origen es {} con destino a {} para el día {} con fecha de regreso {}'.format(glo.dict_elementos['origen'],glo.dict_elementos['destino'],glo.dict_elementos['fecha_ida'],glo.dict_elementos['fecha_regreso']))
-
+      print()
       iata_code = (bi.busqueda_iata_code(glo.dict_elementos['origen']),bi.busqueda_iata_code(glo.dict_elementos['destino']))
 
       if '-1' in iata_code:
-         print('Error Ciudad código IATA no encontrado para ciudad',iata_code.index('-1'))
+         print('Error Ciudad código IATA no encontrado para ciudad',ciudades[iata_code.index('-1')])
       else:
          print("https://www.latam.com/es_cl/apps/personas/booking?fecha2_dia={}&country=cl&vuelos_fecha_salida_ddmmaaaa={}&auAvailability=1&language=es&nadults=1&cabina=Y&ninfants=0&fecha2_anomes={}-{}&ida_vuelta=ida_vuelta&fecha1_dia={}&fecha1_anomes={}-{}&from_city2={}&from_city1={}&flex=1&vuelos_fecha_regreso_ddmmaaaa={}&to_city1={}&nchildren=0&to_city2={}#/'".format(glo.dict_elementos['fecha_regreso'][:2], glo.dict_elementos['fecha_ida'], glo.dict_elementos['fecha_regreso'][-4:], glo.dict_elementos['fecha_regreso'][3:5], glo.dict_elementos['fecha_ida'][:2], glo.dict_elementos['fecha_ida'][-4:], glo.dict_elementos['fecha_ida'][3:5], iata_code[0], iata_code[0], glo.dict_elementos['fecha_regreso'], iata_code[1], iata_code[1]))
 
    else:
       print('Su origen es {} con destino a {} para el día {} sin regreso'.format(glo.dict_elementos['origen'],glo.dict_elementos['destino'],glo.dict_elementos['fecha_ida']))
+      print()
 
       iata_code = (bi.busqueda_iata_code(glo.dict_elementos['origen']),bi.busqueda_iata_code(glo.dict_elementos['destino']))
       if '-1' in iata_code:
-         print('Error Ciudad código IATA no encontrado para ciudad',iata_code.index('-1'))
+         print('Error Ciudad código IATA no encontrado para ciudad',ciudades[iata_code.index('-1')])
       else:
          print("https://www.latam.com/es_cl/apps/personas/booking?fecha2_dia=20&country=cl&vuelos_fecha_salida_ddmmaaaa={}&auAvailability=1&language=es&nadults=1&cabina=Y&ninfants=0&fecha2_anomes=2021-05&ida_vuelta=ida&fecha1_dia={}&fecha1_anomes={}-{}&from_city2={}&from_city1={}&flex=1&vuelos_fecha_regreso_ddmmaaaa=20/05/2021&to_city1={}&nchildren=0&to_city2={}#/".format(glo.dict_elementos['fecha_ida'], glo.dict_elementos['fecha_ida'][:2], glo.dict_elementos['fecha_ida'][-4:], glo.dict_elementos['fecha_ida'][3:5], iata_code[0], iata_code[0], iata_code[1], iata_code[1]))
 
-   
+   print('='*50)
    
 else:
     print("Error en la interacción!")

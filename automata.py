@@ -61,10 +61,11 @@ def Lematizar(texto):
    nlp       = es_core_news_sm.load()
    try:
       doc = nlp(texto)
+      lemas = [token.lemma_ for token in doc]
+      return(" ".join(lemas))
    except:
-      pass
-   lemas = [token.lemma_ for token in doc]
-   return(" ".join(lemas))
+      return 0
+   
 
 #Realiza POS tagging del texto input a partir del corpus es_core_news_sm, este retorna una lista con las etiquetas de cada palabra del texto
 def Etiquetar(texto):
@@ -81,8 +82,8 @@ def busqueda_origen_destino(texto):
       i_etiquetado = Etiquetar(i) #Etiqueta de entidad
       i_etiquetado_join = ' '.join([w+"<"+t+">" for w,t in i_etiquetado]) #Se une la etiqueta con su entidad
       #print(texto[1])
-      matching = re.search("de<ADP> {}".format(i_etiquetado_join),texto[1]) #Se realiza un search para encontrar en el texto con etiquetas si es que, antes de la entidad con su etiqueta, existe una palabra con la etiqueta adposition (preposiciones o postposiciones) <ADP>
-      matching2 = re.search("(a<ADP>|hacia<ADP>|para<ADP>) {}".format(i_etiquetado_join),texto[1])
+      matching = re.search("(de<ADP>|desde<ADP>|origen<NOUN>) {}".format(i_etiquetado_join),texto[1]) #Se realiza un search para encontrar en el texto con etiquetas si es que, antes de la entidad con su etiqueta, existe una palabra con la etiqueta adposition (preposiciones o postposiciones) <ADP>
+      matching2 = re.search("(a<ADP>|hacia<ADP>|para<ADP>|destino<NOUN>) {}".format(i_etiquetado_join),texto[1])
       #Se asigna la localidad encontrada a origen_destino
       if matching != None:
          origen_destino[0] =i
@@ -127,10 +128,11 @@ def InicializarDFA(nQ,Sigma):
 
    # LLenar transiciones no vacias
    #Estado 0
-   #tt[0]['fecha_ida>']   = 0
+   tt[0]['fecha_ida>']   = 12
    tt[0]['origen>']   = 6
    tt[0]['destino>']   = 9
    tt[0]['origen>destino>'] = 1
+   tt[0]['origen>fecha_ida>'] = 11
    tt[0]['destino>fecha_ida>']   = 10
    tt[0]['fecha_ida>ida_regreso>fecha_regreso>'] = 7
    tt[0]['origen>destino>fecha_ida>'] = 2
@@ -176,9 +178,18 @@ def InicializarDFA(nQ,Sigma):
    tt[9]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
 
    #Estado 10
-   tt[10]['origen>fecha_ida>']   = 10
+   tt[10]['destino>fecha_ida>']   = 10
    tt[10]['origen>destino>fecha_ida>']   = 2
    tt[10]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
+
+   #Estado 11
+   tt[11]['origen>fecha_ida>']   = 10
+   tt[11]['origen>destino>fecha_ida>']   = 2
+   tt[11]['origen>destino>fecha_ida>ida_regreso>fecha_regreso>'] = 5
+
+   #Estado 12
+   tt[11]['fecha_ida>']   = 12
+  
 
 
 
@@ -186,7 +197,7 @@ def InicializarDFA(nQ,Sigma):
 
 def EspecificarPreguntasDFA():
    Quest = ["Por favor ingrese una respuesta valida (ejemplo: localización, fechas, etc)",
-            "¿Indique su Fecha de Ida", 
+            "Indique su Fecha de Ida", 
             "¿Necesita vuelo de vuelta? ", 
             "¿Para cuando necesita su vuelo de regreso?", 
             "No necesita vuelo de vuelta", 
@@ -195,7 +206,8 @@ def EspecificarPreguntasDFA():
             "¿Cual es su origen y Destino",
             "Fecha de ida recibida. Indique su Destino",
             "Indique su origen",
-            "Indique su origen"
+            "Indique su origen",
+            "Indique su destino"
             ]
    return(Quest)
 
@@ -231,7 +243,9 @@ def DFA(Q0,F,Sigma,Quest,TablaTrans):
          q9_input(Quest[q])
       elif q == 10:
          q10_input(Quest[q])
-      print('auto_texto estado {}: {}'.format(q,auto_texto))
+      elif q == 11:
+         q11_input(Quest[q])
+      #print('auto_texto estado {}: {}'.format(q,auto_texto))
       Sym  = auto_texto
       try:
          TablaTrans[q][Sym]
@@ -340,6 +354,19 @@ def q10_input(pregunta_estado):
    try:
       origen = [str(entidades[0][0]), '-1']
       creacion_dict(origen,'-1','-1','-1')
+   except:
+      pass
+   fechas = ff.funcion_fechas(texto[0])
+   if fechas[0] != '-1':
+      creacion_dict(['-1','-1'],'-1',1,fechas[0])
+   creacion_texto_automata()
+
+def q11_input(pregunta_estado):
+   texto = LeerVoz(pregunta_estado)
+   entidades = ner_texto(texto[0])#Recibe tupla con entidades, y entidadesTipo
+   try:
+      destino = ['-1',str(entidades[0][0])]
+      creacion_dict(destino,'-1','-1','-1')
    except:
       pass
    fechas = ff.funcion_fechas(texto[0])
