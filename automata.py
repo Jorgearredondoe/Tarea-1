@@ -93,9 +93,12 @@ def Lematizar(texto):
 #Realiza POS tagging del texto input a partir del corpus es_core_news_sm, este retorna una lista con las etiquetas de cada palabra del texto
 def Etiquetar(texto):
    nlp = es_core_news_sm.load()
-   doc = nlp(texto)
-   Etiquetado = [(t.text,t.pos_) for t in doc]
-   return(Etiquetado)
+   try:
+      doc = nlp(texto)
+      Etiquetado = [(t.text,t.pos_) for t in doc]
+      return(Etiquetado)
+   except:
+      return 0
 
 
 
@@ -490,7 +493,7 @@ def creacion_dict(origen_destino = ['-1','-1'], fecha_ida = '-1',ida_regreso = '
       dict_elementos['fecha_regreso'] = fecha_regreso
    if dict_elementos['fecha_ida'] != '-1' and dict_elementos['fecha_regreso']!= '-1':
       dates = [dict_elementos['fecha_ida'], dict_elementos['fecha_regreso']]
-      #dates.sort(key = lambda date: datetime.strptime(date, '%d/%m/%Y'))
+      dates.sort(key = lambda date: datetime.strptime(date, '%d/%m/%Y'))
       dict_elementos['fecha_ida'] = dates[0]
       dict_elementos['fecha_regreso'] = dates[1]
 
