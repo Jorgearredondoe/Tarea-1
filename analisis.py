@@ -12,7 +12,7 @@ glo.creacion_texto_automata()
 #Ciclo inicial que permite que el usuario entregue una respuesta valida
 while (glo.auto_texto == ''):
    #Lectura de voz de requerimiento inicial
-   texto = glo.LeerVoz('Bienvenido al asistente de LAN.com, ¿En qué lo puedo servir?')
+   texto = glo.LeerVoz('Bienvenido al asistente de LATAM.com, ¿En qué lo puedo servir?')
    
    #Se determina si existe alguna locación dentro del texto recibido
    origen_destino = glo.busqueda_origen_destino(texto)
@@ -48,6 +48,7 @@ Questions = glo.EspecificarPreguntasDFA()
 
 #Ingreso a automata
 status = glo.DFA(q0,F,Sigma,Questions,TablaTransicion)
+speak = glo.inicializarTTS()
 if (status):
    #Variables que alojan el nombre de las ciudades origen y destino, en caso de que no se encuentre su código IATA, esta lista será llamada para entregar el nombre de la ciudad con problema.
    ciudades = [glo.dict_elementos['origen'] ,glo.dict_elementos['destino']]
@@ -58,6 +59,7 @@ if (status):
    if glo.dict_elementos['ida_regreso'] == 1:
       #Print de todos los datos encontrados
       print('Su origen es {} con destino a {} para el día {} con fecha de regreso {}'.format(glo.dict_elementos['origen'],glo.dict_elementos['destino'],glo.dict_elementos['fecha_ida'],glo.dict_elementos['fecha_regreso']))
+      speak('Su origen es {} con destino a {} para el día {} con fecha de regreso {}'.format(glo.dict_elementos['origen'],glo.dict_elementos['destino'],glo.dict_elementos['fecha_ida'],glo.dict_elementos['fecha_regreso']))
       print()
       #Búsqueda de codigos IATA para general el link, estos códigos son búscadas en una base de datos externa
       iata_code = (bi.busqueda_iata_code(glo.dict_elementos['origen']),bi.busqueda_iata_code(glo.dict_elementos['destino']))
@@ -67,13 +69,14 @@ if (status):
       else:
          #Print del link
          print("Para acceder a su requerimiento y confirmar la reserva, debe hacer click: https://www.latam.com/es_cl/apps/personas/booking?fecha2_dia={}&country=cl&vuelos_fecha_salida_ddmmaaaa={}&auAvailability=1&language=es&nadults=1&cabina=Y&ninfants=0&fecha2_anomes={}-{}&ida_vuelta=ida_vuelta&fecha1_dia={}&fecha1_anomes={}-{}&from_city2={}&from_city1={}&flex=1&vuelos_fecha_regreso_ddmmaaaa={}&to_city1={}&nchildren=0&to_city2={}#/'".format(glo.dict_elementos['fecha_regreso'][:2], glo.dict_elementos['fecha_ida'], glo.dict_elementos['fecha_regreso'][-4:], glo.dict_elementos['fecha_regreso'][3:5], glo.dict_elementos['fecha_ida'][:2], glo.dict_elementos['fecha_ida'][-4:], glo.dict_elementos['fecha_ida'][3:5], iata_code[0], iata_code[0], glo.dict_elementos['fecha_regreso'], iata_code[1], iata_code[1]))
+         speak("Para acceder a su requerimiento y confirmar la reserva, debe hacer click:")
 
    #Vuelo sin regreso, solo ida
    else:
       #Print de todos los datos encontrados
       print('Su origen es {} con destino a {} para el día {} sin regreso'.format(glo.dict_elementos['origen'],glo.dict_elementos['destino'],glo.dict_elementos['fecha_ida']))
       print()
-
+      speak('Su origen es {} con destino a {} para el día {} sin regreso'.format(glo.dict_elementos['origen'],glo.dict_elementos['destino'],glo.dict_elementos['fecha_ida']))
       #Búsqueda de codigos IATA para general el link, estos códigos son búscadas en una base de datos externa
       iata_code = (bi.busqueda_iata_code(glo.dict_elementos['origen']),bi.busqueda_iata_code(glo.dict_elementos['destino']))
       #En caso de no encontrar código IATA, se indica que este no pudo ser encontrado
@@ -82,12 +85,15 @@ if (status):
       else:
          #Print del link
          print("Para acceder a su requerimiento y confirmar la reserva, debe hacer click: https://www.latam.com/es_cl/apps/personas/booking?fecha2_dia=20&country=cl&vuelos_fecha_salida_ddmmaaaa={}&auAvailability=1&language=es&nadults=1&cabina=Y&ninfants=0&fecha2_anomes=2021-05&ida_vuelta=ida&fecha1_dia={}&fecha1_anomes={}-{}&from_city2={}&from_city1={}&flex=1&vuelos_fecha_regreso_ddmmaaaa=20/05/2021&to_city1={}&nchildren=0&to_city2={}#/".format(glo.dict_elementos['fecha_ida'], glo.dict_elementos['fecha_ida'][:2], glo.dict_elementos['fecha_ida'][-4:], glo.dict_elementos['fecha_ida'][3:5], iata_code[0], iata_code[0], iata_code[1], iata_code[1]))
+         speak("Para acceder a su requerimiento y confirmar la reserva, debe hacer click:")
+
 
    print('='*50)
 
 #Error en caso de no llegar al final del automata
 else:
     print("Error en la interacción!")
+    speak("Error en la interacción!")
 
 
 

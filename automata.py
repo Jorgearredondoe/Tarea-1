@@ -37,13 +37,13 @@ def inicializarTTS():
 #============================================================================
 #Función que "lee la voz", esta llama a ASR para determinar el input del usuario, además de realizar la lematización y POS tagging. Este retorna una tupla con tres valores, el texto reconocido por ASR, texto unido con sus etiquetas y las etiquetas.
 def LeerVoz(question):
-   #speak = inicializarTTS()
-   # Sintetizar voz de la pregunta
-   #speak(question)
+   speak = inicializarTTS()
    #  Reconocer respuesta hablada
    print("="*40)
    print(question)
-   print('Hable Ahora:')
+   # Sintetizar voz de la pregunta
+   speak(question)
+   print('Hable:')
    texto = ASR() #Se obtiene el input del usuario
    texto = Lematizar(texto) #Lematización del input usuario
    #print('dijiste',texto)
@@ -54,7 +54,6 @@ def LeerVoz(question):
 
 #Automatic Speech Recognition, reconoce cuando el usuario habla y la frase la asigna  la variable texto_reconocido en formato str
 def ASR():
-   #speak = inicializarTTS()
    texto_reconocido = "" #Creación de string
    r = sr.Recognizer()                                                                                   
    with sr.Microphone() as source:    
@@ -232,9 +231,9 @@ def InicializarDFA(nQ,Sigma):
 def EspecificarPreguntasDFA():
    Quest = ["Bienvenido al asistente de LAN.com, ¿En qué lo puedo servir?",
             "Indique su Fecha de Ida", 
-            "¿Necesita vuelo de vuelta? ", 
+            "¿Necesita vuelo de regreso? ", 
             "¿Para cuando necesita su vuelo de regreso?", 
-            "No necesita vuelo de vuelta", 
+            "No necesita vuelo de regreso", 
             "Se esta procesando su consulta", 
             "¿Cuál es su destino?", 
             "¿Cual es su origen y Destino?",
@@ -309,7 +308,7 @@ def q1_input(pregunta_estado):
    creacion_texto_automata() #Actualiación texto automata
 
 #Estado 2
-#¿Necesita vuelo de vuelta?
+#¿Necesita vuelo de regreso?
 def q2_input(pregunta_estado):
    aux_var = 0
    while aux_var == 0:
@@ -317,7 +316,7 @@ def q2_input(pregunta_estado):
       #Se chequea en el texto que exista la palabra "si" o "no" (sinonimos tambien) y así determinará a que estado seguir
       #Tendra prioridad el si, por lo que si se responde "Si no", será tomado como un si
       if re.search("si", texto[0].lower()) != None or re.search("claro", texto[0].lower()) != None or re.search("afirmativo", texto[0].lower()) != None or re.search("efectivamente", texto[0].lower()) != None or re.search("sí", texto[0].lower()):
-         #Se actualiza el diccionario con la variable binaria ida_vuelta = 1
+         #Se actualiza el diccionario con la variable binaria ida_regreso = 1
          creacion_dict(['-1','-1'], '-1', 1, '-1') #esta debe estar actualizada con las otras variables
          aux_var = 1
       elif re.search("no", texto[0].lower()) != None or re.search("negativo", texto[0].lower()) != None or re.search("nunca", texto[0].lower()) != None or re.search("jamas", texto[0].lower()) != None:
@@ -334,14 +333,16 @@ def q2_input(pregunta_estado):
 def q3_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
    fechas = ff.funcion_fechas(texto[0]) #Busqueda de fechas
-   fecha_compare = ff.comparar_fechas(fechas) #Se determina si es que fueron entregado dos fechas, se determina ida y vuelta
+   fecha_compare = ff.comparar_fechas(fechas) #Se determina si es que fueron entregado dos fechas, se determina ida y regreso
    creacion_dict(['-1','-1'], fechas[1], fecha_compare, fechas[0]) #Actualización de diccionario
    creacion_texto_automata() #Actualiación texto automata
 
 #Estado 4
-#No necesita vuelo de vuelta
+#No necesita vuelo de regreso
 def q4_input(pregunta_estado):
+   speak = inicializarTTS()
    print(pregunta_estado) #No realiza acción, pasa a estado final
+   speak(pregunta_estado)
    creacion_texto_automata() #Actualiación texto automata
 
 #Estado 6
@@ -349,7 +350,7 @@ def q4_input(pregunta_estado):
 def q6_input(pregunta_estado):
    texto = LeerVoz(pregunta_estado)
    fechas = ff.funcion_fechas(texto[0]) #busqueda de fechas
-   fecha_compare = ff.comparar_fechas(fechas) #Se determina si es que fueron entregado dos fechas, se determina ida y vuelta
+   fecha_compare = ff.comparar_fechas(fechas) #Se determina si es que fueron entregado dos fechas, se determina ida y regreso
    entidades = ner_texto(texto[0])
    try:
       destino = ['-1', str(entidades[0][0])]
@@ -406,7 +407,7 @@ def q9_input(pregunta_estado):
       pass
    #Se revisa si existen fechas en el requerimiento
    fechas = ff.funcion_fechas(texto[0])
-   fecha_compare = ff.comparar_fechas(fechas)#Se determina si es que fueron entregado dos fechas, se determina ida y vuelta
+   fecha_compare = ff.comparar_fechas(fechas)#Se determina si es que fueron entregado dos fechas, se determina ida y regreso
    creacion_dict(['-1','-1'],fechas[0],fecha_compare,fechas[1])
    creacion_texto_automata() #Actualiación texto automata
 
@@ -482,7 +483,7 @@ def creacion_dict(origen_destino = ['-1','-1'], fecha_ida = '-1',ida_regreso = '
    if dict_elementos['destino'] == '-1':
       dict_elementos['destino'] = origen_destino[1]
    
-   #ida y vuelta
+   #ida y regreso
    if ida_regreso != '-1' and dict_elementos['ida_regreso'] == '-1':
       dict_elementos['ida_regreso'] = ida_regreso
 
